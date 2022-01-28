@@ -1,7 +1,37 @@
 let config = {};
 config.contract = {
-    address: "0x96899058E70b6DE8D847Ff93c71C087D11EbD749",
+    address: "0xe7c923A3faDd0B47458ec823bE3C291930D1D597",
     abi: [
+        {
+            "anonymous": false,
+            "inputs": [
+                {
+                    "indexed": false,
+                    "internalType": "address",
+                    "name": "userAddress",
+                    "type": "address"
+                },
+                {
+                    "indexed": false,
+                    "internalType": "address payable",
+                    "name": "relayerAddress",
+                    "type": "address"
+                },
+                {
+                    "indexed": false,
+                    "internalType": "bytes",
+                    "name": "functionSignature",
+                    "type": "bytes"
+                }
+            ],
+            "name": "MetaTransactionExecuted",
+            "type": "event"
+        },
+        {
+            "payable": true,
+            "stateMutability": "payable",
+            "type": "fallback"
+        },
         {
             "constant": false,
             "inputs": [
@@ -11,30 +41,57 @@ config.contract = {
                     "type": "address"
                 },
                 {
-                    "internalType": "string",
-                    "name": "newQuote",
-                    "type": "string"
+                    "internalType": "bytes",
+                    "name": "functionSignature",
+                    "type": "bytes"
                 },
                 {
                     "internalType": "bytes32",
-                    "name": "r",
+                    "name": "sigR",
                     "type": "bytes32"
                 },
                 {
                     "internalType": "bytes32",
-                    "name": "s",
+                    "name": "sigS",
                     "type": "bytes32"
                 },
                 {
                     "internalType": "uint8",
-                    "name": "v",
+                    "name": "sigV",
                     "type": "uint8"
                 }
             ],
-            "name": "setQuoteMeta",
-            "outputs": [],
+            "name": "executeMetaTransaction",
+            "outputs": [
+                {
+                    "internalType": "bytes",
+                    "name": "",
+                    "type": "bytes"
+                }
+            ],
+            "payable": true,
+            "stateMutability": "payable",
+            "type": "function"
+        },
+        {
+            "constant": true,
+            "inputs": [
+                {
+                    "internalType": "address",
+                    "name": "user",
+                    "type": "address"
+                }
+            ],
+            "name": "getNonce",
+            "outputs": [
+                {
+                    "internalType": "uint256",
+                    "name": "nonce",
+                    "type": "uint256"
+                }
+            ],
             "payable": false,
-            "stateMutability": "nonpayable",
+            "stateMutability": "view",
             "type": "function"
         },
         {
@@ -51,27 +108,6 @@ config.contract = {
                     "internalType": "address",
                     "name": "currentOwner",
                     "type": "address"
-                }
-            ],
-            "payable": false,
-            "stateMutability": "view",
-            "type": "function"
-        },
-        {
-            "constant": true,
-            "inputs": [
-                {
-                    "internalType": "address",
-                    "name": "",
-                    "type": "address"
-                }
-            ],
-            "name": "nonces",
-            "outputs": [
-                {
-                    "internalType": "uint256",
-                    "name": "",
-                    "type": "uint256"
                 }
             ],
             "payable": false,
@@ -106,6 +142,21 @@ config.contract = {
             ],
             "payable": false,
             "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "constant": false,
+            "inputs": [
+                {
+                    "internalType": "string",
+                    "name": "newQuote",
+                    "type": "string"
+                }
+            ],
+            "name": "setQuote",
+            "outputs": [],
+            "payable": false,
+            "stateMutability": "nonpayable",
             "type": "function"
         }
     ]

@@ -18,7 +18,7 @@ const showInfoMessage = message => {
 
 let contract;
 let domainData = {
-  name: "Quote",
+  name: "TestContract",
   version: "1",
   chainId: "42",  // Kovan
   verifyingContract: config.contract.address
@@ -32,7 +32,8 @@ const domainType = [
 
 const metaTransactionType = [
   { name: "nonce", type: "uint256" },
-  { name: "from", type: "address" }
+  { name: "from", type: "address" },
+  { name: "functionSignature", type: "bytes" }
 ];
 
 let web3;
@@ -52,7 +53,10 @@ function App() {
     }
 
     // NOTE: dappId is no longer needed in latest version of Biconomy SDK
-    const biconomy = new Biconomy(window.ethereum, { dappId: "5e9a0fc5667350123f4de8fe", apiKey: "q9oEztJM8.e8ed08a7-5b38-48e3-b4c0-f66e6b66f407" });
+    const biconomy = new Biconomy(window.ethereum, {apiKey: "Xw7IYfjh7.a6fa9140-8eda-40a0-9f26-d100d4da77a4" });
+
+    // const biconomy = new Biconomy(window.ethereum, { dappId: "5e9a0fc5667350123f4de8fe", apiKey: "q9oEztJM8.e8ed08a7-5b38-48e3-b4c0-f66e6b66f407" });
+
 
     web3 = new Web3(biconomy);
 
@@ -84,10 +88,30 @@ function App() {
     console.log(window.ethereum.selectedAddress)
     setNewQuote("");
     console.log(contract)
-    let nonce = await contract.methods.nonces(window.ethereum.selectedAddress).call();
+    let nonce = await contract.methods.getNonce(window.ethereum.selectedAddress).call();
+
+    const encoded = web3.eth.abi.encodeFunctionCall({
+      "constant": false,
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "newQuote",
+          "type": "string"
+        }
+      ],
+      "name": "setQuote",
+      "outputs": [],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }, [newQuote]);
+
+    console.log("functionSignature", encoded);
+
     let message = {};
     message.nonce = parseInt(nonce);
     message.from = window.ethereum.selectedAddress;
+    message.functionSignature = encoded;
 
     const dataToSign = JSON.stringify({
       types: {
@@ -96,7 +120,7 @@ function App() {
       },
       domain: domainData,
       primaryType: "MetaTransaction",
-      message: message
+      message: message,
     });
 
     window.web3.currentProvider.sendAsync(
@@ -120,10 +144,10 @@ function App() {
           console.log(r, "r")
           console.log(s, "s")
           console.log(v, "v")
-          console.log(window.ethereum.address, "userAddress")
-  
+          console.log(window.ethereum.selectedAddress, "userAddress")
+
           const promiEvent = contract.methods
-            .setQuoteMeta(window.ethereum.selectedAddress, newQuote, r, s, v)
+            .executeMetaTransaction(window.ethereum.selectedAddress, encoded, r, s, v)
             .send({
               from: window.ethereum.selectedAddress
             })
