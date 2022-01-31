@@ -20,7 +20,7 @@ let contract;
 let domainData = {
   name: "TestContract",
   version: "1",
-  chainId: "42",  // Kovan
+  chainId: "80001",
   verifyingContract: config.contract.address
 };
 const domainType = [
@@ -53,7 +53,7 @@ function App() {
     }
 
     // NOTE: dappId is no longer needed in latest version of Biconomy SDK
-    const biconomy = new Biconomy(window.ethereum, {apiKey: "Xw7IYfjh7.a6fa9140-8eda-40a0-9f26-d100d4da77a4" });
+    const biconomy = new Biconomy(window.ethereum, {apiKey: "7W13hdrj0.5006d7ad-32a1-48bb-9cec-47b7e112050e" });
 
     // const biconomy = new Biconomy(window.ethereum, { dappId: "5e9a0fc5667350123f4de8fe", apiKey: "q9oEztJM8.e8ed08a7-5b38-48e3-b4c0-f66e6b66f407" });
 
@@ -62,6 +62,7 @@ function App() {
 
     biconomy.onEvent(biconomy.READY, async () => {
       // Initialize your dapp here like getting user accounts etc
+      console.log("Biconomy object is ready");
 
       await window.ethereum.enable();
       contract = new web3.eth.Contract(config.contract.abi, config.contract.address);
