@@ -18,6 +18,7 @@ import Typography from '@material-ui/core/Typography';
 import { Box } from "@material-ui/core";
 let sigUtil = require("eth-sig-util");
 
+
 let config = {
   contract: { //My contract which should be gasless
     address: "0xD6B86975B93df47942144B996d6c404e6Bfc514f",
@@ -353,7 +354,7 @@ function App() {
   const onSubmitSCWTx = async event => {
     if (newQuote != "" && contract) {
       setTransactionHash("");
-      debugger;
+      // debugger;
       const operation = 0; // CALL
       const gasPrice = 0; // If 0, then no refund to relayer
       const gasToken = '0x0000000000000000000000000000000000000000'; // ETH
@@ -369,10 +370,31 @@ function App() {
           to, valueWei, data, operation, txGasEstimate, baseGasEstimate, gasPrice, gasToken, executor, nonce);
       console.log(transactionHash)
       console.log(selectedAddress);
-      const signature = await walletProvider.send("personal_sign", [selectedAddress, transactionHash]);
-      const { r, s, v } = getSignatureParameters(signature);
+
+      let privateKey = "cbe9aa79f62169c0e5f88c09251c44c9c690cf38ff8a39f4c18e72fffa03565f";
+      let wallet = new ethers.Wallet(privateKey, ethersProvider);
+
+      const newHash = ethers.utils.hashMessage(transactionHash);
+      console.log("Hash with prefix (hashMessage): ", newHash);
+
+      const newHash2 = ethers.utils.keccak256(`\x19Ethereum Signed Message:\n${transactionHash.length}`.toString(16));
+      console.log("Hash with prefix 2 (hashMessage): ", newHash);
+
+      const signature = await wallet.signMessage(transactionHash);
+      console.log("Sig w/private key: ", signature);
+
+      const signature2 = await walletProvider.send("eth_sign", [selectedAddress, newHash]);
+      console.log("Eth_sign with prefix: ", signature2);
+      console.log("Eth_sign with prefix2: ", ethers.utils.keccak256(signature2));
+
+      const signature3 = await walletProvider.send("personal_sign", [selectedAddress, transactionHash]);
+      console.log("personal_sing w/o prefix: ", signature3);
+
+      return;
+
+      const { r, s, v } = getSignatureParameters(signature2);
       const newSignature = `${r}${s.substring(2)}${Number(v + 4).toString(16)}`;
-      debugger;
+      // debugger;
 
       let trasnaction = await walletContract.execTransaction(to, valueWei, data, operation, txGasEstimate,
           baseGasEstimate, gasPrice, gasToken, executor, newSignature, {gasLimit: 1000000});
