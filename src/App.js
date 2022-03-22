@@ -16,12 +16,16 @@ import { makeStyles } from '@material-ui/core/styles';
 import Link from '@material-ui/core/Link';
 import Typography from '@material-ui/core/Typography';
 import { Box } from "@material-ui/core";
+
+import Torus from "@toruslabs/torus-embed";
+// import Web3 from "web3";
+
 let sigUtil = require("eth-sig-util");
 
 
 let config = {
   contract: { //My contract which should be gasless
-    address: "0xB6A0748efA322fE482F4Df9B8d2FA16774E39d67",
+    address: "0x53Bdb35e2e2C33e5c5f7b197eB056d6099a4a7A8",
     abi: [{"anonymous":false,"inputs":[{"indexed":false,"internalType":"address","name":"userAddress","type":"address"},{"indexed":false,"internalType":"addresspayable","name":"relayerAddress","type":"address"},{"indexed":false,"internalType":"bytes","name":"functionSignature","type":"bytes"}],"name":"MetaTransactionExecuted","type":"event"},{"inputs":[{"internalType":"address","name":"userAddress","type":"address"},{"internalType":"bytes","name":"functionSignature","type":"bytes"},{"internalType":"bytes32","name":"sigR","type":"bytes32"},{"internalType":"bytes32","name":"sigS","type":"bytes32"},{"internalType":"uint8","name":"sigV","type":"uint8"}],"name":"executeMetaTransaction","outputs":[{"internalType":"bytes","name":"","type":"bytes"}],"stateMutability":"payable","type":"function"},{"inputs":[{"internalType":"address","name":"user","type":"address"}],"name":"getNonce","outputs":[{"internalType":"uint256","name":"nonce","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"getQuote","outputs":[{"internalType":"string","name":"currentQuote","type":"string"},{"internalType":"address","name":"currentOwner","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"owner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"quote","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"string","name":"newQuote","type":"string"}],"name":"setQuote","outputs":[],"stateMutability":"nonpayable","type":"function"}]
   },
   proxyContract: {
@@ -107,24 +111,45 @@ function App() {
           typeof window.ethereum !== "undefined" &&
           window.ethereum.isMetaMask
       ) {
+        // const torus = new Torus();
+        // await torus.init();
+        // await torus.login(); // await torus.ethereum.enable()
+        //
+        // const userInfo = await torus.getUserInfo();
+        // console.log('userInfo: ', userInfo);
+        //
+        // torus.showTorusButton();
+
+        // const publicAddress = await torus.getPublicAddress({
+        //   verifier: "email",
+        //   verifierId: userInfo.email,
+        // });
+        //
+        // console.log('publicAddress: ', publicAddress);
+
+        // handleClose();
+        //const web3 = new Web3(torus.provider);
+
         // Ethereum user detected. You can now use the provider.
-        const provider = window["ethereum"];
-        await provider.enable();
-        setLoadingMessage("Initializing Biconomy ...");
-        // We're creating biconomy provider linked to your network of choice where your contract is deployed
-        biconomy = new Biconomy(new ethers.providers.WebSocketProvider("wss://polygon-mumbai.g.alchemy.com/v2/kuBXZrz3LHwQsjM9E_0KEhBSEjOHmkue"),
-            { apiKey: config.apiKey.prod, debug: true });
+        // const provider = window["ethereum"];
+        // await provider.enable();
+         setLoadingMessage("Initializing Biconomy ...");
+        // // We're creating biconomy provider linked to your network of choice where your contract is deployed
+         biconomy = new Biconomy(new ethers.providers.WebSocketProvider("wss://polygon-mumbai.g.alchemy.com/v2/kuBXZrz3LHwQsjM9E_0KEhBSEjOHmkue"),
+             { apiKey: config.apiKey.prod, debug: true });
 
         /*
-          This provider is linked to your wallet.
-          If needed, substitute your wallet solution in place of window.ethereum
-        */
-        ethersProvider = new ethers.providers.Web3Provider(biconomy);
-        walletProvider = new ethers.providers.Web3Provider(window.ethereum);
-        walletSigner = walletProvider.getSigner();
+           This provider is linked to your wallet.
+           If needed, substitute your wallet solution in place of window.ethereum
+         */
+         ethersProvider = new ethers.providers.Web3Provider(biconomy);
+         walletProvider = new ethers.providers.Web3Provider(window.ethereum);
+         walletSigner = walletProvider.getSigner();
 
-        let userAddress = await walletSigner.getAddress()
-        setSelectedAddress(userAddress);
+         let userAddress = await walletSigner.getAddress();
+         console.log(userAddress);
+         setSelectedAddress(userAddress);
+
 
         biconomy.onEvent(biconomy.READY, async () => {
 
@@ -142,7 +167,10 @@ function App() {
           );
 
           contractInterface = new ethers.utils.Interface(config.contract.abi);
-          getQuoteFromNetwork();
+          // for (let i = 0; i < 1000; ++i) {
+            await getQuoteFromNetwork();
+          //   console.log(i);
+          // }
         }).onEvent(biconomy.ERROR, (error, message) => {
           // Handle error while initializing mexa
           console.log(message);
@@ -160,47 +188,47 @@ function App() {
   };
 
   const onSubmitWithEIP712Sign = async event => {
-    if (newQuote != "" && contract) {
-      setTransactionHash("");
-      if (metaTxEnabled) {
-        showInfoMessage(`Getting user signature`);
-        let userAddress = selectedAddress;
-        let nonce = await contract.getNonce(userAddress);
-        let functionSignature = contractInterface.encodeFunctionData("setQuote", [newQuote]);
-        let message = {};
-        message.nonce = parseInt(nonce);
-        message.from = userAddress;
-        message.functionSignature = functionSignature;
-
-        const dataToSign = JSON.stringify({
-          types: {
-            EIP712Domain: domainType,
-            MetaTransaction: metaTransactionType
-          },
-          domain: domainData,
-          primaryType: "MetaTransaction",
-          message: message
-        });
-
-        // Its important to use eth_signTypedData_v3 and not v4 to get EIP712 signature because we have used salt in domain data
-        // instead of chainId
-        let signature = await walletProvider.send("eth_signTypedData_v3", [userAddress, dataToSign])
-        let { r, s, v } = getSignatureParameters(signature);
-        sendTransaction(userAddress, functionSignature, r, s, v);
-      } else {
-        console.log("Sending normal transaction");
-        let tx = await contract.setQuote(newQuote);
-        console.log("Transaction hash : ", tx.hash);
-        showInfoMessage(`Transaction sent by relayer with hash ${tx.hash}`);
-        let confirmation = await tx.wait();
-        console.log(confirmation);
-        setTransactionHash(tx.hash);
-        showSuccessMessage("Transaction confirmed on chain");
-        getQuoteFromNetwork();
-      }
-    } else {
-      showErrorMessage("Please enter the quote");
-    }
+    // if (newQuote != "" && contract) {
+    //   setTransactionHash("");
+    //   if (metaTxEnabled) {
+    //     showInfoMessage(`Getting user signature`);
+    //     let userAddress = selectedAddress;
+    //     let nonce = await contract.getNonce(userAddress);
+    //     let functionSignature = contractInterface.encodeFunctionData("setQuote", [newQuote]);
+    //     let message = {};
+    //     message.nonce = parseInt(nonce);
+    //     message.from = userAddress;
+    //     message.functionSignature = functionSignature;
+    //
+    //     const dataToSign = JSON.stringify({
+    //       types: {
+    //         EIP712Domain: domainType,
+    //         MetaTransaction: metaTransactionType
+    //       },
+    //       domain: domainData,
+    //       primaryType: "MetaTransaction",
+    //       message: message
+    //     });
+    //
+    //     // Its important to use eth_signTypedData_v3 and not v4 to get EIP712 signature because we have used salt in domain data
+    //     // instead of chainId
+    //     let signature = await walletProvider.send("eth_signTypedData_v3", [userAddress, dataToSign])
+    //     let { r, s, v } = getSignatureParameters(signature);
+    //     sendTransaction(userAddress, functionSignature, r, s, v);
+    //   } else {
+    //     console.log("Sending normal transaction");
+    //     let tx = await contract.setQuote(newQuote);
+    //     console.log("Transaction hash : ", tx.hash);
+    //     showInfoMessage(`Transaction sent by relayer with hash ${tx.hash}`);
+    //     let confirmation = await tx.wait();
+    //     console.log(confirmation);
+    //     setTransactionHash(tx.hash);
+    //     showSuccessMessage("Transaction confirmed on chain");
+    //     getQuoteFromNetwork();
+    //   }
+    // } else {
+    //   showErrorMessage("Please enter the quote");
+    // }
   };
 
   const onSubmitWithPrivateKey = async (event) => {
@@ -211,9 +239,9 @@ function App() {
         if (metaTxEnabled) {
           showInfoMessage(`Getting user signature`);
           let privateKey =
-              "2ef295b86aa9d40ff8835a9fe852942ccea0b7c757fad5602dfa429bcdaea910";
+              "cbe9aa79f62169c0e5f88c09251c44c9c690cf38ff8a39f4c18e72fffa03565f";
           let wallet = new ethers.Wallet(privateKey);
-          let userAddress = "0xE1E763551A85F04B4687f0035885E7F710A46aA6";
+          let userAddress = selectedAddress;
           let nonce = await contract.getNonce(userAddress);
           let functionSignature = contractInterface.encodeFunctionData(
               "setQuote",
@@ -290,6 +318,7 @@ function App() {
         result.currentQuote != undefined &&
         result.currentOwner != undefined
     ) {
+      console.log(result);
       if (result.currentQuote == "") {
         showErrorMessage("No quotes set on blockchain yet");
       } else {
@@ -371,7 +400,9 @@ function App() {
       console.log(transactionHash)
       console.log(selectedAddress);
 
-      let privateKey = "cbe9aa79f62169c0e5f88c09251c44c9c690cf38ff8a39f4c18e72fffa03565f";
+      //let privateKey = "cbe9aa79f62169c0e5f88c09251c44c9c690cf38ff8a39f4c18e72fffa03565f"; //metamask
+      let privateKey = "f02992f82adfd9812c4fc0a43a1bb6998ca31cbbf2d6656c4cd788759acc0570"; // tor.us
+
       let wallet = new ethers.Wallet(privateKey, ethersProvider);
 
       // const newHash = ethers.utils.hashMessage(transactionHash);
